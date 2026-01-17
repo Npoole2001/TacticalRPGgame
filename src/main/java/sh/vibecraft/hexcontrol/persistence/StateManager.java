@@ -86,35 +86,50 @@ public class StateManager {
             return false;
         }
 
-        try {
-            String json = Files.readString(stateFile);
-            AppState state = gson.fromJson(json, AppState.class);
+        if (loadFromFile(stateFile, false)) {
+            return true;
+        }
 
-            if (state != null) {
-                state.apply(camera, hexGrid);
-                System.out.println("Loaded state: " + state.agents.size() + " agents");
-                return true;
-            }
-        } catch (Exception e) {
-            System.err.println("Error loading state: " + e.getMessage());
-
-            // Try backup
-            if (Files.exists(backupFile)) {
-                try {
-                    String json = Files.readString(backupFile);
-                    AppState state = gson.fromJson(json, AppState.class);
-                    if (state != null) {
-                        state.apply(camera, hexGrid);
-                        System.out.println("Loaded backup state");
-                        return true;
-                    }
-                } catch (Exception e2) {
-                    System.err.println("Error loading backup state: " + e2.getMessage());
-                }
-            }
+        if (Files.exists(backupFile)) {
+            return loadFromFile(backupFile, true);
         }
 
         return false;
+    }
+
+    private boolean loadFromFile(Path file, boolean isBackup) {
+        try {
+            String json = Files.readString(file);
+            AppState state = gson.fromJson(json, AppState.class);
+
+            if (state == null) {
+                System.err.println("Error loading state: state file was empty.");
+                return false;
+            }
+
+            state.ensureDefaults();
+
+            if (!state.migrate()) {
+                System.err.println("Error loading state: migration failed.");
+                return false;
+            }
+
+            var issues = state.validate();
+            if (!issues.isEmpty()) {
+                System.err.println("State validation warnings: " + String.join("; ", issues));
+            }
+
+            state.apply(camera, hexGrid);
+            if (isBackup) {
+                System.out.println("Loaded backup state");
+            } else {
+                System.out.println("Loaded state: " + state.agents.size() + " agents");
+            }
+            return true;
+        } catch (Exception e) {
+            System.err.println("Error loading state: " + e.getMessage());
+            return false;
+        }
     }
 
     /**

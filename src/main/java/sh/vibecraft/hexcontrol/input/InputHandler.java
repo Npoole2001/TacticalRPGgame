@@ -134,7 +134,12 @@ public class InputHandler {
                 var cell = hexGrid.getCell(hexIndex);
                 if (cell != null) {
                     System.out.println("Selected: " + cell.getAgent());
-                    menuSystem.openMenu(cell.getAgent(), windowWidth, windowHeight);
+                    var agent = cell.getAgent();
+                    if (agent != null && agent.getType() != sh.vibecraft.hexcontrol.agent.AgentType.EMPTY) {
+                        menuSystem.openMenu(agent, windowWidth, windowHeight);
+                    } else {
+                        menuSystem.closeMenu();
+                    }
                 }
             } else {
                 hexGrid.setSelected(-1);
@@ -174,7 +179,12 @@ public class InputHandler {
                 if (cell != null) {
                     // Focus camera on selected hex
                     camera.focusOn(cell.getWorldX(), cell.getWorldZ());
-                    menuSystem.openMenu(cell.getAgent(), windowWidth, windowHeight);
+                    var agent = cell.getAgent();
+                    if (agent != null && agent.getType() != sh.vibecraft.hexcontrol.agent.AgentType.EMPTY) {
+                        menuSystem.openMenu(agent, windowWidth, windowHeight);
+                    } else {
+                        menuSystem.closeMenu();
+                    }
                 }
             }
         }

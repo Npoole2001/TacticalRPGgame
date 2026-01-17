@@ -113,9 +113,22 @@ public class AppState {
     }
 
     /**
+     * Ensure collections are initialized for defensive loading.
+     */
+    public void ensureDefaults() {
+        if (agents == null) agents = new ArrayList<>();
+        if (pinnedObjectives == null) pinnedObjectives = new ArrayList<>();
+        if (moduleOwnership == null) moduleOwnership = new HashMap<>();
+        if (contextSheet == null) contextSheet = new ContextSheetState();
+        if (configuredProviders == null) configuredProviders = new ArrayList<>();
+    }
+
+    /**
      * Apply state to live objects.
      */
     public void apply(Camera camera, HexGrid hexGrid) {
+        ensureDefaults();
+
         // Camera
         camera.setYaw(cameraYaw);
         camera.setPitch(cameraPitch);
@@ -173,6 +186,8 @@ public class AppState {
      * @return true if migration succeeded
      */
     public boolean migrate() {
+        ensureDefaults();
+
         if (schemaVersion == CURRENT_SCHEMA_VERSION) {
             return true;  // No migration needed
         }
@@ -180,12 +195,6 @@ public class AppState {
         try {
             // Migration from v1 to v2
             if (schemaVersion == 1) {
-                // Add new fields with defaults
-                if (pinnedObjectives == null) pinnedObjectives = new ArrayList<>();
-                if (moduleOwnership == null) moduleOwnership = new HashMap<>();
-                if (contextSheet == null) contextSheet = new ContextSheetState();
-                if (configuredProviders == null) configuredProviders = new ArrayList<>();
-
                 // Migrate agent states
                 for (AgentState as : agents) {
                     if (as.tokenBudget == 0) as.tokenBudget = -1;  // -1 = unlimited
@@ -207,6 +216,8 @@ public class AppState {
      * Validate state integrity.
      */
     public List<String> validate() {
+        ensureDefaults();
+
         List<String> issues = new ArrayList<>();
 
         if (schemaVersion > CURRENT_SCHEMA_VERSION) {
