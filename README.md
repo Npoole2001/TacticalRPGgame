@@ -45,6 +45,17 @@ HexControl provides a gamified 3D interface where each hexagon represents an AI 
 ./gradlew run
 ```
 
+Windows PowerShell:
+
+```powershell
+.\gradlew.bat run
+```
+
+## Desktop VM Setup (VirtualBox/VMware/Hyper-V)
+
+HexControl is a desktop OpenGL app, so your VM needs **3D acceleration** and
+updated guest tools. See the detailed checklist in [VM_SETUP.md](VM_SETUP.md).
+
 ## Controls
 
 | Input | Action |
