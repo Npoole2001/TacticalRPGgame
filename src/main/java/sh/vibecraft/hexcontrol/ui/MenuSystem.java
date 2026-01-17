@@ -81,7 +81,9 @@ public class MenuSystem {
 
         menuItems.add(new MenuItem("Clear Session", MenuItemType.BUTTON, () -> {
             System.out.println("Clear session: " + currentAgent.getName());
-            currentAgent.setLastMessage(null);
+            currentAgent.setCurrentTask(null);
+            currentAgent.setCurrentObjective(null);
+            currentAgent.setStatus(sh.vibecraft.hexcontrol.agent.AgentStatus.IDLE);
         }));
 
         menuItems.add(new MenuItem("Remove Agent", MenuItemType.DANGER, () -> {
