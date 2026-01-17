@@ -56,120 +56,9 @@ public class InputHandler {
     }
 
     private void setupCallbacks() {
-        // Mouse position callback
-        glfwSetCursorPosCallback(window, (win, x, y) -> {
-            lastMouseX = mouseX;
-            lastMouseY = mouseY;
-            mouseX = x;
-            mouseY = y;
-
-            // Check for drag
-            if (leftButtonDown || middleButtonDown || rightButtonDown) {
-                double dx = x - dragStartX;
-                double dy = y - dragStartY;
-                if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
-                    isDragging = true;
-                }
-            }
-
-            // Update hover when not dragging
-            if (!isDragging) {
-                updateHover();
-            }
-
-            // Update menu hover state
-            if (menuSystem.isMenuOpen()) {
-                menuSystem.updateHover((float) mouseX, (float) mouseY);
-            }
-        });
-
-        // Mouse button callback
-        glfwSetMouseButtonCallback(window, (win, button, action, mods) -> {
-            // Middle mouse - rotation
-            if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
-                middleButtonDown = (action == GLFW_PRESS);
-                if (action == GLFW_PRESS) {
-                    dragStartX = mouseX;
-                    dragStartY = mouseY;
-                    isDragging = false;
-                }
-            }
-
-            // Right mouse - panning
-            if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-                if (action == GLFW_PRESS) {
-                    rightButtonDown = true;
-                    dragStartX = mouseX;
-                    dragStartY = mouseY;
-                    isDragging = false;
-                } else if (action == GLFW_RELEASE) {
-                    if (!isDragging && menuSystem.isMenuOpen()) {
-                        // Right click closes menu if not dragging
-                        menuSystem.closeMenu();
-                        hexGrid.setSelected(-1);
-                    }
-                    rightButtonDown = false;
-                    isDragging = false;
-                }
-            }
-
-            // Left mouse - selection
-            if (button == GLFW_MOUSE_BUTTON_LEFT) {
-                if (action == GLFW_PRESS) {
-                    leftButtonDown = true;
-                    dragStartX = mouseX;
-                    dragStartY = mouseY;
-                    isDragging = false;
-                } else if (action == GLFW_RELEASE) {
-                    if (!isDragging) {
-                        handleLeftClick();
-                    }
-                    leftButtonDown = false;
-                    isDragging = false;
-                }
-            }
-        });
-
-        // Scroll callback for zoom
-        glfwSetScrollCallback(window, (win, xOffset, yOffset) -> {
-            camera.zoom((float) yOffset);
-        });
-
-        // Keyboard callback
-        glfwSetKeyCallback(window, (win, key, scancode, action, mods) -> {
-            // ESC handling
-            if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-                if (menuSystem.isMenuOpen()) {
-                    menuSystem.closeMenu();
-                    hexGrid.setSelected(-1);
-                } else {
-                    glfwSetWindowShouldClose(window, true);
-                }
-            }
-
-            // WASD for panning
-            if (key == GLFW_KEY_W) keyW = (action != GLFW_RELEASE);
-            if (key == GLFW_KEY_A) keyA = (action != GLFW_RELEASE);
-            if (key == GLFW_KEY_S) keyS = (action != GLFW_RELEASE);
-            if (key == GLFW_KEY_D) keyD = (action != GLFW_RELEASE);
-
-            // Number keys 1-9 to select hexes directly
-            if (action == GLFW_PRESS && key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
-                int index = key - GLFW_KEY_1;
-                if (index < hexGrid.getCells().size()) {
-                    hexGrid.setSelected(index);
-                    var cell = hexGrid.getCell(index);
-                    if (cell != null) {
-                        // Focus camera on selected hex
-                        camera.focusOn(cell.getWorldX(), cell.getWorldZ());
-                        menuSystem.openMenu(cell.getAgent(), windowWidth, windowHeight);
-                    }
-                }
-            }
-
-            // Space - pause all agents (future feature)
-            // Tab - cycle through agents (future feature)
-        });
+        // Note: Most callbacks are now set up by Engine.setupExtendedInputCallbacks()
+        // to properly integrate with UI components. This method only sets up
+        // callbacks that are specific to InputHandler.
 
         // Window size callback
         glfwSetWindowSizeCallback(window, (win, width, height) -> {
@@ -257,4 +146,121 @@ public class InputHandler {
     public double getMouseY() { return mouseY; }
     public int getWindowWidth() { return windowWidth; }
     public int getWindowHeight() { return windowHeight; }
+
+    /**
+     * Handle key callback from external source.
+     */
+    public void keyCallback(int key, int scancode, int action, int mods) {
+        // ESC handling
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+            if (menuSystem.isMenuOpen()) {
+                menuSystem.closeMenu();
+                hexGrid.setSelected(-1);
+            }
+        }
+
+        // WASD for panning
+        if (key == GLFW_KEY_W) keyW = (action != GLFW_RELEASE);
+        if (key == GLFW_KEY_A) keyA = (action != GLFW_RELEASE);
+        if (key == GLFW_KEY_S) keyS = (action != GLFW_RELEASE);
+        if (key == GLFW_KEY_D) keyD = (action != GLFW_RELEASE);
+
+        // Number keys 1-9 to select hexes directly
+        if (action == GLFW_PRESS && key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
+            int index = key - GLFW_KEY_1;
+            if (index < hexGrid.getCells().size()) {
+                hexGrid.setSelected(index);
+                var cell = hexGrid.getCell(index);
+                if (cell != null) {
+                    // Focus camera on selected hex
+                    camera.focusOn(cell.getWorldX(), cell.getWorldZ());
+                    menuSystem.openMenu(cell.getAgent(), windowWidth, windowHeight);
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle mouse button callback from external source.
+     */
+    public void mouseButtonCallback(int button, int action, int mods) {
+        // Middle mouse - rotation
+        if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+            middleButtonDown = (action == GLFW_PRESS);
+            if (action == GLFW_PRESS) {
+                dragStartX = mouseX;
+                dragStartY = mouseY;
+                isDragging = false;
+            }
+        }
+
+        // Right mouse - panning
+        if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+            if (action == GLFW_PRESS) {
+                rightButtonDown = true;
+                dragStartX = mouseX;
+                dragStartY = mouseY;
+                isDragging = false;
+            } else if (action == GLFW_RELEASE) {
+                if (!isDragging && menuSystem.isMenuOpen()) {
+                    menuSystem.closeMenu();
+                    hexGrid.setSelected(-1);
+                }
+                rightButtonDown = false;
+                isDragging = false;
+            }
+        }
+
+        // Left mouse - selection
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            if (action == GLFW_PRESS) {
+                leftButtonDown = true;
+                dragStartX = mouseX;
+                dragStartY = mouseY;
+                isDragging = false;
+            } else if (action == GLFW_RELEASE) {
+                if (!isDragging) {
+                    handleLeftClick();
+                }
+                leftButtonDown = false;
+                isDragging = false;
+            }
+        }
+    }
+
+    /**
+     * Handle scroll callback from external source.
+     */
+    public void scrollCallback(double xOffset, double yOffset) {
+        camera.zoom((float) yOffset);
+    }
+
+    /**
+     * Handle cursor position callback from external source.
+     */
+    public void cursorPosCallback(double x, double y) {
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
+        mouseX = x;
+        mouseY = y;
+
+        // Check for drag
+        if (leftButtonDown || middleButtonDown || rightButtonDown) {
+            double dx = x - dragStartX;
+            double dy = y - dragStartY;
+            if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+                isDragging = true;
+            }
+        }
+
+        // Update hover when not dragging
+        if (!isDragging) {
+            updateHover();
+        }
+
+        // Update menu hover state
+        if (menuSystem.isMenuOpen()) {
+            menuSystem.updateHover((float) mouseX, (float) mouseY);
+        }
+    }
 }
