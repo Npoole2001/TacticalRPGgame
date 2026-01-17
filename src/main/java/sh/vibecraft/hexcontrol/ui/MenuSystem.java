@@ -37,6 +37,13 @@ public class MenuSystem {
     }
 
     public void openMenu(AIAgent agent, int windowWidth, int windowHeight) {
+        if (agent == null || agent.getType() == AgentType.EMPTY) {
+            currentAgent = null;
+            menuOpen = false;
+            targetProgress = 0.0f;
+            return;
+        }
+
         this.currentAgent = agent;
         this.menuOpen = true;
         this.targetProgress = 1.0f;
