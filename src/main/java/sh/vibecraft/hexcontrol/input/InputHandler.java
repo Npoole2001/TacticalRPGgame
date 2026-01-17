@@ -9,7 +9,11 @@ import sh.vibecraft.hexcontrol.ui.MenuSystem;
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
- * Handles all input events: mouse clicks, camera panning, and keyboard.
+ * Handles all input events per spec:
+ * - MMB drag: Rotate camera
+ * - RMB drag or WASD: Pan camera
+ * - Scroll: Zoom
+ * - Left click: Select/interact with tiles
  */
 public class InputHandler {
 
@@ -18,7 +22,7 @@ public class InputHandler {
     private HexGrid hexGrid;
     private MenuSystem menuSystem;
 
-    // Window dimensions (updated via callback)
+    // Window dimensions
     private int windowWidth = 1280;
     private int windowHeight = 720;
 
@@ -26,12 +30,21 @@ public class InputHandler {
     private double mouseX, mouseY;
     private double lastMouseX, lastMouseY;
     private boolean middleButtonDown = false;
+    private boolean rightButtonDown = false;
     private boolean leftButtonDown = false;
     private boolean isDragging = false;
 
-    // Drag threshold to distinguish click from drag
+    // Drag threshold
     private static final float DRAG_THRESHOLD = 5.0f;
     private double dragStartX, dragStartY;
+
+    // Keyboard state for WASD
+    private boolean keyW = false, keyA = false, keyS = false, keyD = false;
+
+    // Rotation sensitivity
+    private float rotationSensitivity = 0.3f;
+    private float panSensitivity = 0.05f;
+    private float keyboardPanSpeed = 15.0f;
 
     public InputHandler(long window, Camera camera, HexGrid hexGrid, MenuSystem menuSystem) {
         this.window = window;
@@ -51,7 +64,7 @@ public class InputHandler {
             mouseY = y;
 
             // Check for drag
-            if (leftButtonDown || middleButtonDown) {
+            if (leftButtonDown || middleButtonDown || rightButtonDown) {
                 double dx = x - dragStartX;
                 double dy = y - dragStartY;
                 if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
@@ -59,12 +72,20 @@ public class InputHandler {
                 }
             }
 
-            // Update hover
-            updateHover();
+            // Update hover when not dragging
+            if (!isDragging) {
+                updateHover();
+            }
+
+            // Update menu hover state
+            if (menuSystem.isMenuOpen()) {
+                menuSystem.updateHover((float) mouseX, (float) mouseY);
+            }
         });
 
         // Mouse button callback
         glfwSetMouseButtonCallback(window, (win, button, action, mods) -> {
+            // Middle mouse - rotation
             if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
                 middleButtonDown = (action == GLFW_PRESS);
                 if (action == GLFW_PRESS) {
@@ -74,6 +95,25 @@ public class InputHandler {
                 }
             }
 
+            // Right mouse - panning
+            if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+                if (action == GLFW_PRESS) {
+                    rightButtonDown = true;
+                    dragStartX = mouseX;
+                    dragStartY = mouseY;
+                    isDragging = false;
+                } else if (action == GLFW_RELEASE) {
+                    if (!isDragging && menuSystem.isMenuOpen()) {
+                        // Right click closes menu if not dragging
+                        menuSystem.closeMenu();
+                        hexGrid.setSelected(-1);
+                    }
+                    rightButtonDown = false;
+                    isDragging = false;
+                }
+            }
+
+            // Left mouse - selection
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
                 if (action == GLFW_PRESS) {
                     leftButtonDown = true;
@@ -88,10 +128,6 @@ public class InputHandler {
                     isDragging = false;
                 }
             }
-
-            if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-                handleRightClick();
-            }
         });
 
         // Scroll callback for zoom
@@ -101,13 +137,21 @@ public class InputHandler {
 
         // Keyboard callback
         glfwSetKeyCallback(window, (win, key, scancode, action, mods) -> {
+            // ESC handling
             if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
                 if (menuSystem.isMenuOpen()) {
                     menuSystem.closeMenu();
+                    hexGrid.setSelected(-1);
                 } else {
                     glfwSetWindowShouldClose(window, true);
                 }
             }
+
+            // WASD for panning
+            if (key == GLFW_KEY_W) keyW = (action != GLFW_RELEASE);
+            if (key == GLFW_KEY_A) keyA = (action != GLFW_RELEASE);
+            if (key == GLFW_KEY_S) keyS = (action != GLFW_RELEASE);
+            if (key == GLFW_KEY_D) keyD = (action != GLFW_RELEASE);
 
             // Number keys 1-9 to select hexes directly
             if (action == GLFW_PRESS && key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
@@ -116,10 +160,15 @@ public class InputHandler {
                     hexGrid.setSelected(index);
                     var cell = hexGrid.getCell(index);
                     if (cell != null) {
+                        // Focus camera on selected hex
+                        camera.focusOn(cell.getWorldX(), cell.getWorldZ());
                         menuSystem.openMenu(cell.getAgent(), windowWidth, windowHeight);
                     }
                 }
             }
+
+            // Space - pause all agents (future feature)
+            // Tab - cycle through agents (future feature)
         });
 
         // Window size callback
@@ -130,14 +179,33 @@ public class InputHandler {
     }
 
     public void update(float deltaTime) {
-        // Handle middle-mouse panning
+        // Handle middle mouse rotation
         if (middleButtonDown && isDragging) {
             float dx = (float) (mouseX - lastMouseX);
             float dy = (float) (mouseY - lastMouseY);
 
-            // Convert screen movement to world panning
-            // Negative because dragging right should move camera left (view moves right)
-            camera.pan(-dx * 0.01f, -dy * 0.01f);
+            // Rotate camera - horizontal mouse movement = yaw, vertical = pitch
+            camera.rotate(-dx * rotationSensitivity, dy * rotationSensitivity);
+        }
+
+        // Handle right mouse panning
+        if (rightButtonDown && isDragging) {
+            float dx = (float) (mouseX - lastMouseX);
+            float dy = (float) (mouseY - lastMouseY);
+
+            // Pan camera - screen movement translates to world pan
+            camera.pan(-dx * panSensitivity, -dy * panSensitivity);
+        }
+
+        // Handle WASD panning
+        float panX = 0, panZ = 0;
+        if (keyW) panZ -= keyboardPanSpeed * deltaTime;
+        if (keyS) panZ += keyboardPanSpeed * deltaTime;
+        if (keyA) panX -= keyboardPanSpeed * deltaTime;
+        if (keyD) panX += keyboardPanSpeed * deltaTime;
+
+        if (panX != 0 || panZ != 0) {
+            camera.pan(panX, panZ);
         }
     }
 
@@ -147,7 +215,7 @@ public class InputHandler {
             return;
         }
 
-        Vector3f worldPos = camera.screenToWorld((float) mouseX, (float) mouseY, windowWidth, windowHeight);
+        Vector3f worldPos = camera.screenToWorld((float) mouseX, (float) mouseY);
         if (worldPos != null) {
             int hexIndex = hexGrid.getHexAt(worldPos.x, worldPos.z);
             hexGrid.setHovered(hexIndex);
@@ -169,7 +237,7 @@ public class InputHandler {
         }
 
         // Check for hex click
-        Vector3f worldPos = camera.screenToWorld((float) mouseX, (float) mouseY, windowWidth, windowHeight);
+        Vector3f worldPos = camera.screenToWorld((float) mouseX, (float) mouseY);
         if (worldPos != null) {
             int hexIndex = hexGrid.getHexAt(worldPos.x, worldPos.z);
             if (hexIndex >= 0) {
@@ -185,18 +253,8 @@ public class InputHandler {
         }
     }
 
-    private void handleRightClick() {
-        if (menuSystem.isMenuOpen()) {
-            menuSystem.closeMenu();
-            hexGrid.setSelected(-1);
-        }
-    }
-
-    public double getMouseX() {
-        return mouseX;
-    }
-
-    public double getMouseY() {
-        return mouseY;
-    }
+    public double getMouseX() { return mouseX; }
+    public double getMouseY() { return mouseY; }
+    public int getWindowWidth() { return windowWidth; }
+    public int getWindowHeight() { return windowHeight; }
 }

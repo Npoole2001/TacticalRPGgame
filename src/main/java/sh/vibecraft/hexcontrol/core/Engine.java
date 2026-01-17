@@ -9,6 +9,9 @@ import sh.vibecraft.hexcontrol.render.Camera;
 import sh.vibecraft.hexcontrol.render.HexGrid;
 import sh.vibecraft.hexcontrol.input.InputHandler;
 import sh.vibecraft.hexcontrol.ui.MenuSystem;
+import sh.vibecraft.hexcontrol.ui.StatsHUD;
+import sh.vibecraft.hexcontrol.persistence.StateManager;
+import sh.vibecraft.hexcontrol.security.AuditLog;
 
 import java.nio.*;
 
@@ -20,6 +23,7 @@ import static org.lwjgl.system.MemoryUtil.*;
 
 /**
  * Core engine managing the application lifecycle, window, and main loop.
+ * Integrates all subsystems per the spec.
  */
 public class Engine {
 
@@ -27,11 +31,17 @@ public class Engine {
     private int windowWidth = 1280;
     private int windowHeight = 720;
 
+    // Core systems
     private Renderer renderer;
     private Camera camera;
     private HexGrid hexGrid;
     private InputHandler inputHandler;
     private MenuSystem menuSystem;
+    private StatsHUD statsHUD;
+
+    // Persistence and security
+    private StateManager stateManager;
+    private AuditLog auditLog;
 
     private boolean running = true;
 
@@ -60,7 +70,7 @@ public class Engine {
         glfwWindowHint(GLFW_SAMPLES, 4); // Anti-aliasing
 
         // Create the window
-        window = glfwCreateWindow(windowWidth, windowHeight, "HexControl - AI Agent Manager", NULL, NULL);
+        window = glfwCreateWindow(windowWidth, windowHeight, "HexControl - Agent Orchestration", NULL, NULL);
         if (window == NULL) {
             throw new RuntimeException("Failed to create the GLFW window");
         }
@@ -94,15 +104,30 @@ public class Engine {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        // Set clear color (dark background)
-        glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+        // Set clear color (pure black per spec)
+        glClearColor(0.02f, 0.02f, 0.03f, 1.0f);
 
         // Initialize components
         camera = new Camera(windowWidth, windowHeight);
-        hexGrid = new HexGrid(7); // Create a grid of 7 hexes (center + 6 surrounding)
+        hexGrid = new HexGrid(19); // 19 hexes = 2 rings around center
         renderer = new Renderer();
         menuSystem = new MenuSystem();
+        statsHUD = new StatsHUD();
         inputHandler = new InputHandler(window, camera, hexGrid, menuSystem);
+
+        // Initialize persistence
+        stateManager = new StateManager();
+        stateManager.initialize(camera, hexGrid);
+
+        // Try to load previous state
+        if (stateManager.load()) {
+            System.out.println("Restored previous session");
+        }
+
+        // Initialize audit log
+        auditLog = new AuditLog(stateManager.getStateDir());
+        auditLog.initialize();
+        auditLog.logSecurityEvent("APP_START", "HexControl started");
 
         // Setup window resize callback
         glfwSetFramebufferSizeCallback(window, (win, width, height) -> {
@@ -110,14 +135,21 @@ public class Engine {
             windowHeight = height;
             glViewport(0, 0, width, height);
             camera.updateProjection(width, height);
+            stateManager.markDirty();
         });
 
-        System.out.println("HexControl initialized successfully!");
+        System.out.println("=========================================");
+        System.out.println("  HexControl - Agent Orchestration");
+        System.out.println("=========================================");
         System.out.println("Controls:");
-        System.out.println("  - Middle mouse button + drag: Pan camera");
-        System.out.println("  - Scroll wheel: Zoom in/out");
-        System.out.println("  - Left click on hex: Open agent menu");
-        System.out.println("  - ESC: Exit");
+        System.out.println("  MMB + drag    : Rotate camera");
+        System.out.println("  RMB + drag    : Pan camera");
+        System.out.println("  WASD          : Pan camera");
+        System.out.println("  Scroll        : Zoom in/out");
+        System.out.println("  Left click    : Select hex / Open menu");
+        System.out.println("  1-9           : Quick-select agent");
+        System.out.println("  ESC           : Close menu / Exit");
+        System.out.println("=========================================");
     }
 
     private void loop() {
@@ -131,20 +163,26 @@ public class Engine {
             // Poll events
             glfwPollEvents();
 
-            // Update
+            // Update all systems
             inputHandler.update(deltaTime);
             camera.update(deltaTime);
             hexGrid.update(deltaTime);
             menuSystem.update(deltaTime);
+            statsHUD.update(deltaTime, hexGrid);
 
             // Render
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+            // Render hex grid
             renderer.begin(camera);
             hexGrid.render(renderer);
             renderer.end();
 
-            // Render UI on top
+            // Render effects (rings, particles)
+            hexGrid.renderEffects(camera);
+
+            // Render UI overlay
+            statsHUD.render(windowWidth, windowHeight);
             menuSystem.render(windowWidth, windowHeight);
 
             glfwSwapBuffers(window);
@@ -152,10 +190,19 @@ public class Engine {
     }
 
     private void cleanup() {
+        // Log shutdown
+        auditLog.logSecurityEvent("APP_STOP", "HexControl shutting down");
+
+        // Save state
+        stateManager.shutdown();
+        auditLog.shutdown();
+
+        // Cleanup OpenGL resources
         renderer.cleanup();
         hexGrid.cleanup();
         menuSystem.cleanup();
 
+        // Cleanup GLFW
         glfwFreeCallbacks(window);
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -166,5 +213,13 @@ public class Engine {
 
     public void stop() {
         running = false;
+    }
+
+    public StateManager getStateManager() {
+        return stateManager;
+    }
+
+    public AuditLog getAuditLog() {
+        return auditLog;
     }
 }
