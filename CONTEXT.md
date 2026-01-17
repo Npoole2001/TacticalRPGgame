@@ -197,7 +197,20 @@ When clicking an occupied tile:
   - "Run tests"
   - "Format code"
   - "Open diff"
-  - "Generate PR description"
+- "Generate PR description"
+
+---
+
+## 4) Testing
+Run tests with:
+- `./gradlew test`
+
+If the Gradle wrapper fails with `ClassNotFoundException: org.gradle.wrapper.GradleWrapperMain`, ensure the wrapper JAR is present at `gradle/wrapper/gradle-wrapper.jar` or regenerate it via a local Gradle install (`gradle wrapper`). This repository currently fails to run tests because the wrapper JAR is missing.
+
+---
+
+## 5) Known Issues (Keep Updated)
+- Gradle wrapper JAR missing, so `./gradlew test` cannot run without regenerating or adding the wrapper JAR.
 
 ### 3.4 Dry-Run Mode (Recommended Safety Default)
 Dry-run mode is a first-class workflow:
