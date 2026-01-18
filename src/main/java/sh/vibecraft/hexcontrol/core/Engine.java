@@ -8,9 +8,12 @@ import sh.vibecraft.hexcontrol.render.Renderer;
 import sh.vibecraft.hexcontrol.render.Camera;
 import sh.vibecraft.hexcontrol.render.HexGrid;
 import sh.vibecraft.hexcontrol.render.BiomePatterns;
+import sh.vibecraft.hexcontrol.render.effects.ScanlineEffect;
+import sh.vibecraft.hexcontrol.render.effects.GlitchShimmer;
 import sh.vibecraft.hexcontrol.input.InputHandler;
 import sh.vibecraft.hexcontrol.ui.*;
 import sh.vibecraft.hexcontrol.demo.DemoMode;
+import sh.vibecraft.hexcontrol.orchestrator.GlobalControls;
 import sh.vibecraft.hexcontrol.persistence.StateManager;
 import sh.vibecraft.hexcontrol.security.AuditLog;
 import sh.vibecraft.hexcontrol.security.PrivacyMode;
@@ -48,6 +51,13 @@ public class Engine {
     private MiniMap miniMap;
     private AgentSearch agentSearch;
     private EventTimeline eventTimeline;
+
+    // Future Features (Section 8)
+    private AlertSystem alertSystem;
+    private GlobalControls globalControls;
+    private FocusMode focusMode;
+    private ScanlineEffect scanlineEffect;
+    private GlitchShimmer glitchShimmer;
 
     // Demo mode
     private DemoMode demoMode;
@@ -143,6 +153,14 @@ public class Engine {
         demoMode = new DemoMode();
         privacyMode = new PrivacyMode();
 
+        // Initialize Future Features (Section 8)
+        alertSystem = new AlertSystem();
+        globalControls = new GlobalControls();
+        globalControls.setAlertSystem(alertSystem);
+        focusMode = new FocusMode();
+        scanlineEffect = new ScanlineEffect();
+        glitchShimmer = new GlitchShimmer();
+
         // Initialize persistence
         stateManager = new StateManager();
         stateManager.initialize(camera, hexGrid);
@@ -190,6 +208,8 @@ public class Engine {
         System.out.println("  Ctrl+F        : Agent Search");
         System.out.println("  M             : Toggle Mini-map");
         System.out.println("  T             : Toggle Event Timeline");
+        System.out.println("  P             : Pause/Resume All Agents");
+        System.out.println("  F             : Focus Mode (selected agent)");
         System.out.println("  F5            : Toggle Demo Mode");
         System.out.println("  F6            : Toggle Demo Simulation");
         System.out.println("=========================================");
@@ -220,6 +240,12 @@ public class Engine {
             agentSearch.update(deltaTime);
             eventTimeline.update(deltaTime);
 
+            // Update Future Features components
+            alertSystem.update(deltaTime);
+            focusMode.update(deltaTime);
+            scanlineEffect.update(deltaTime);
+            glitchShimmer.update(deltaTime);
+
             // Update demo mode if active
             if (demoModeActive) {
                 demoMode.update(deltaTime, hexGrid);
@@ -236,8 +262,17 @@ public class Engine {
             // Render biome patterns on tiles
             renderBiomePatterns();
 
+            // Render glitch shimmer on active tiles
+            renderGlitchShimmer();
+
             // Render effects (rings, particles)
             hexGrid.renderEffects(camera);
+
+            // Render scanline sweep effect
+            scanlineEffect.render(windowWidth, windowHeight);
+
+            // Render focus mode overlay (if active)
+            focusMode.render(windowWidth, windowHeight);
 
             // Render UI overlay (order matters for layering)
             statsHUD.render(windowWidth, windowHeight);
@@ -246,6 +281,9 @@ public class Engine {
             eventTimeline.render(windowWidth, windowHeight);
             agentSearch.render(windowWidth, windowHeight);
             settingsPanel.render(windowWidth, windowHeight);
+
+            // Render alert toasts (always on top)
+            alertSystem.render(windowWidth, windowHeight);
 
             glfwSwapBuffers(window);
         }
@@ -269,6 +307,29 @@ public class Engine {
                 agent.getRole().getAccentColor(),
                 gameTime
             );
+        }
+    }
+
+    private void renderGlitchShimmer() {
+        var viewProjection = camera.getViewProjectionMatrix();
+
+        for (var cell : hexGrid.getCells()) {
+            var agent = cell.getAgent();
+            if (agent == null || agent.getType() == sh.vibecraft.hexcontrol.agent.AgentType.EMPTY) {
+                continue;
+            }
+
+            // Only render glitch shimmer on running agents
+            if (agent.getStatus() == sh.vibecraft.hexcontrol.agent.AgentStatus.RUNNING) {
+                glitchShimmer.render(
+                    viewProjection,
+                    cell.getWorldX(),
+                    cell.getWorldZ(),
+                    1.0f,
+                    agent.getStatus(),
+                    gameTime
+                );
+            }
         }
     }
 
@@ -314,6 +375,25 @@ public class Engine {
                 }
             }
 
+            // Handle global pause/resume (P key)
+            if (key == GLFW_KEY_P && action == GLFW_PRESS && !settingsPanel.isVisible() && !agentSearch.isVisible()) {
+                globalControls.togglePauseAll(hexGrid);
+                if (globalControls.isAllPaused()) {
+                    scanlineEffect.startPauseAll();
+                }
+            }
+
+            // Handle focus mode toggle (F key)
+            if (key == GLFW_KEY_F && action == GLFW_PRESS && !settingsPanel.isVisible() && !agentSearch.isVisible() && (mods & GLFW_MOD_CONTROL) == 0) {
+                int selectedIdx = hexGrid.getSelectedIndex();
+                if (selectedIdx >= 0) {
+                    var cell = hexGrid.getCells().get(selectedIdx);
+                    if (cell.getAgent() != null) {
+                        focusMode.toggle(cell.getAgent(), selectedIdx, camera, hexGrid);
+                    }
+                }
+            }
+
             // Forward key input to active panels
             if (settingsPanel.isVisible()) {
                 settingsPanel.handleKeyInput(key, action);
@@ -324,13 +404,20 @@ public class Engine {
 
             // Escape closes panels
             if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-                if (settingsPanel.isVisible()) {
+                if (focusMode.isActive()) {
+                    focusMode.exit(camera);
+                } else if (settingsPanel.isVisible()) {
                     settingsPanel.close();
                 } else if (agentSearch.isVisible()) {
                     agentSearch.close();
                 } else if (eventTimeline.isVisible()) {
                     eventTimeline.hide();
                 }
+            }
+
+            // Forward key input to focus mode
+            if (focusMode.isActive()) {
+                focusMode.handleKeyInput(key, action);
             }
         });
 
@@ -355,6 +442,9 @@ public class Engine {
                 float mouseY = (float) ypos[0];
 
                 // Check UI panels first (in reverse render order)
+                if (focusMode.isActive() && focusMode.handleClick(mouseX, mouseY, windowWidth, windowHeight, camera)) {
+                    return;
+                }
                 if (settingsPanel.isVisible() && settingsPanel.handleClick(mouseX, mouseY)) {
                     return;
                 }
@@ -377,7 +467,9 @@ public class Engine {
 
         // Scroll callback for UI components
         glfwSetScrollCallback(window, (win, xoffset, yoffset) -> {
-            if (eventTimeline.isVisible()) {
+            if (focusMode.isActive()) {
+                focusMode.handleScroll((float) yoffset);
+            } else if (eventTimeline.isVisible()) {
                 eventTimeline.handleScroll((float) yoffset);
             } else {
                 inputHandler.scrollCallback(xoffset, yoffset);
@@ -425,6 +517,8 @@ public class Engine {
         hexGrid.cleanup();
         menuSystem.cleanup();
         biomePatterns.cleanup();
+        scanlineEffect.cleanup();
+        glitchShimmer.cleanup();
 
         // Cleanup GLFW
         glfwFreeCallbacks(window);
