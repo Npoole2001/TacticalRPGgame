@@ -13,6 +13,7 @@ import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.opengl.GL31.*;
+import static org.lwjgl.opengl.GL33.glVertexAttribDivisor;
 
 /**
  * Instanced particle system for efficient rendering of square smoke particles.

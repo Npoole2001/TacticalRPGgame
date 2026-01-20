@@ -1,7 +1,7 @@
 package sh.vibecraft.hexcontrol.ui;
 
 import org.joml.Vector3f;
-import sh.vibecraft.hexcontrol.agent.Agent;
+import sh.vibecraft.hexcontrol.agent.AIAgent;
 import sh.vibecraft.hexcontrol.agent.AgentStatus;
 import sh.vibecraft.hexcontrol.render.Camera;
 import sh.vibecraft.hexcontrol.render.HexGrid;
@@ -16,7 +16,7 @@ import static org.lwjgl.opengl.GL11.*;
 public class FocusMode {
 
     private boolean active = false;
-    private Agent focusedAgent;
+    private AIAgent focusedAgent;
     private int focusedCellIndex = -1;
 
     // Animation state
@@ -60,7 +60,7 @@ public class FocusMode {
     /**
      * Enter focus mode for an agent.
      */
-    public void enter(Agent agent, int cellIndex, Camera camera, HexGrid hexGrid) {
+    public void enter(AIAgent agent, int cellIndex, Camera camera, HexGrid hexGrid) {
         if (agent == null) return;
 
         this.focusedAgent = agent;
@@ -96,7 +96,7 @@ public class FocusMode {
     /**
      * Toggle focus mode for an agent.
      */
-    public void toggle(Agent agent, int cellIndex, Camera camera, HexGrid hexGrid) {
+    public void toggle(AIAgent agent, int cellIndex, Camera camera, HexGrid hexGrid) {
         if (active && focusedAgent == agent) {
             exit(camera);
         } else {
@@ -547,6 +547,7 @@ public class FocusMode {
         return switch (status) {
             case RUNNING -> new Vector3f(0.3f, 0.8f, 0.4f);
             case PAUSED -> new Vector3f(0.6f, 0.6f, 0.3f);
+            case SLEEPING -> new Vector3f(0.3f, 0.3f, 0.5f);
             case BLOCKED -> new Vector3f(0.9f, 0.6f, 0.2f);
             case ERROR -> new Vector3f(0.9f, 0.3f, 0.3f);
             case IDLE -> new Vector3f(0.4f, 0.4f, 0.5f);
@@ -646,7 +647,7 @@ public class FocusMode {
         return active;
     }
 
-    public Agent getFocusedAgent() {
+    public AIAgent getFocusedAgent() {
         return focusedAgent;
     }
 

@@ -204,6 +204,13 @@ public class ScanlineEffect {
     }
 
     /**
+     * Alias for triggerPauseAll - used by Engine.
+     */
+    public void startPauseAll() {
+        triggerPauseAll();
+    }
+
+    /**
      * Trigger for error/alert action.
      */
     public void triggerAlert() {
@@ -231,6 +238,66 @@ public class ScanlineEffect {
                 onComplete = null;
             }
         }
+    }
+
+    /**
+     * Render as 2D screen-space overlay.
+     */
+    public void render(int windowWidth, int windowHeight) {
+        if (!active) return;
+
+        // Setup 2D orthographic projection
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        glOrtho(0, windowWidth, windowHeight, 0, -1, 1);
+
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+
+        glDisable(GL_DEPTH_TEST);
+
+        // Draw scanline as simple 2D bar
+        float lineY = progress * windowHeight;
+        float lineHeight = 4.0f;
+        float glowHeight = 20.0f;
+
+        // Glow
+        glBegin(GL_QUADS);
+        glColor4f(color.x, color.y, color.z, 0.0f);
+        glVertex2f(0, lineY - glowHeight);
+        glVertex2f(windowWidth, lineY - glowHeight);
+        glColor4f(color.x, color.y, color.z, 0.4f);
+        glVertex2f(windowWidth, lineY);
+        glVertex2f(0, lineY);
+        glEnd();
+
+        // Main line
+        glColor4f(color.x, color.y, color.z, 0.9f);
+        glBegin(GL_QUADS);
+        glVertex2f(0, lineY - lineHeight / 2);
+        glVertex2f(windowWidth, lineY - lineHeight / 2);
+        glVertex2f(windowWidth, lineY + lineHeight / 2);
+        glVertex2f(0, lineY + lineHeight / 2);
+        glEnd();
+
+        // Glow below
+        glBegin(GL_QUADS);
+        glColor4f(color.x, color.y, color.z, 0.4f);
+        glVertex2f(0, lineY);
+        glVertex2f(windowWidth, lineY);
+        glColor4f(color.x, color.y, color.z, 0.0f);
+        glVertex2f(windowWidth, lineY + glowHeight);
+        glVertex2f(0, lineY + glowHeight);
+        glEnd();
+
+        glEnable(GL_DEPTH_TEST);
+
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
     }
 
     public void render(Matrix4f viewProjection) {

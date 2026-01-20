@@ -16,3 +16,6 @@ Thumbs.db
 # Runtime
 logs/
 *.log
+
+# Dependencies (downloaded by scripts/download-deps.sh)
+libs/*.jar

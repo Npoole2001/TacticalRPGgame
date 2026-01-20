@@ -8,9 +8,11 @@ import org.joml.Vector3f;
 public enum AgentStatus {
     IDLE("Idle", new Vector3f(0.4f, 0.4f, 0.4f)),
     RUNNING("Running", new Vector3f(0.2f, 0.8f, 0.3f)),
+    PAUSED("Paused", new Vector3f(0.6f, 0.6f, 0.3f)),
     SLEEPING("Sleeping", new Vector3f(0.3f, 0.3f, 0.5f)),
     BLOCKED("Blocked", new Vector3f(0.8f, 0.6f, 0.1f)),
-    ERROR("Error", new Vector3f(0.8f, 0.2f, 0.2f));
+    ERROR("Error", new Vector3f(0.8f, 0.2f, 0.2f)),
+    COMPLETE("Complete", new Vector3f(0.3f, 0.6f, 0.9f));
 
     private final String displayName;
     private final Vector3f color;

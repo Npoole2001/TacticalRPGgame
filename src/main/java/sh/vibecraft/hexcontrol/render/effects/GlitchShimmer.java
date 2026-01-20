@@ -223,6 +223,23 @@ public class GlitchShimmer {
     }
 
     /**
+     * Update the glitch shimmer effect.
+     */
+    public void update(float deltaTime) {
+        // Currently no state to update - all animation is time-based in shaders
+    }
+
+    /**
+     * Render glitch shimmer on a hex tile based on agent status.
+     */
+    public void render(Matrix4f viewProjection, float x, float z, float scale,
+                       sh.vibecraft.hexcontrol.agent.AgentStatus status, float time) {
+        float intensity = calculateIntensity(status, 0.5f);
+        Vector3f color = status.getColor();
+        render(viewProjection, x, z, scale, color, time, intensity, (int)(x * 7 + z * 13));
+    }
+
+    /**
      * Render glitch shimmer on a hex tile.
      *
      * @param intensity 0.0 to 1.0 - how strong the effect should be

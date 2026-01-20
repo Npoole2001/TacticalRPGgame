@@ -200,6 +200,13 @@ public class Camera {
     }
 
     /**
+     * Set target zoom distance with smooth interpolation.
+     */
+    public void setTargetZoom(float zoomDistance) {
+        this.targetDistance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, zoomDistance));
+    }
+
+    /**
      * Convert screen coordinates to world ray for picking.
      */
     public Vector3f screenToWorldRay(float screenX, float screenY) {

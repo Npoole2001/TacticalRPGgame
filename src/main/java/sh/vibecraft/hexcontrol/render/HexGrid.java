@@ -282,9 +282,11 @@ public class HexGrid {
             float pulseIntensity = switch (agent.getStatus()) {
                 case IDLE -> 0.02f;
                 case RUNNING -> 0.08f;
+                case PAUSED -> 0.03f;
                 case SLEEPING -> 0.01f;
                 case BLOCKED -> 0.05f;
                 case ERROR -> 0.1f;
+                case COMPLETE -> 0.04f;
             };
 
             float pulse = (float) (1.0f + Math.sin(pulsePhase) * pulseIntensity);

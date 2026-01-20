@@ -162,12 +162,15 @@ public class DemoMode {
                 float r = random.nextFloat();
                 if (r < 0.1f) yield AgentStatus.BLOCKED;
                 if (r < 0.15f) yield AgentStatus.ERROR;
-                if (r < 0.25f) yield AgentStatus.IDLE;
+                if (r < 0.20f) yield AgentStatus.PAUSED;
+                if (r < 0.30f) yield AgentStatus.IDLE;
                 yield AgentStatus.RUNNING;
             }
+            case PAUSED -> random.nextFloat() < 0.5f ? AgentStatus.RUNNING : AgentStatus.PAUSED;
             case BLOCKED -> random.nextFloat() < 0.4f ? AgentStatus.RUNNING : AgentStatus.BLOCKED;
             case ERROR -> random.nextFloat() < 0.2f ? AgentStatus.IDLE : AgentStatus.ERROR;
             case SLEEPING -> random.nextFloat() < 0.1f ? AgentStatus.IDLE : AgentStatus.SLEEPING;
+            case COMPLETE -> AgentStatus.COMPLETE;
         };
     }
 

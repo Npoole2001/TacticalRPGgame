@@ -1,6 +1,6 @@
 package sh.vibecraft.hexcontrol.orchestrator;
 
-import sh.vibecraft.hexcontrol.agent.Agent;
+import sh.vibecraft.hexcontrol.agent.AIAgent;
 import sh.vibecraft.hexcontrol.agent.AgentStatus;
 import sh.vibecraft.hexcontrol.render.HexGrid;
 import sh.vibecraft.hexcontrol.ui.AlertSystem;
@@ -58,7 +58,7 @@ public class GlobalControls {
         int pausedCount = 0;
 
         for (var cell : hexGrid.getCells()) {
-            Agent agent = cell.getAgent();
+            AIAgent agent = cell.getAgent();
             if (agent != null && agent.getStatus() == AgentStatus.RUNNING) {
                 pausedStates.put(agent.getId(), agent.getStatus());
                 agent.setStatus(AgentStatus.PAUSED);
@@ -88,7 +88,7 @@ public class GlobalControls {
         int resumedCount = 0;
 
         for (var cell : hexGrid.getCells()) {
-            Agent agent = cell.getAgent();
+            AIAgent agent = cell.getAgent();
             if (agent != null && pausedStates.containsKey(agent.getId())) {
                 AgentStatus previousStatus = pausedStates.get(agent.getId());
                 agent.setStatus(previousStatus);
@@ -113,7 +113,7 @@ public class GlobalControls {
     /**
      * Pause a specific agent.
      */
-    public void pauseAgent(Agent agent) {
+    public void pauseAgent(AIAgent agent) {
         if (agent == null || agent.getStatus() != AgentStatus.RUNNING) return;
 
         agent.setStatus(AgentStatus.PAUSED);
@@ -126,7 +126,7 @@ public class GlobalControls {
     /**
      * Resume a specific agent.
      */
-    public void resumeAgent(Agent agent) {
+    public void resumeAgent(AIAgent agent) {
         if (agent == null || agent.getStatus() != AgentStatus.PAUSED) return;
 
         agent.setStatus(AgentStatus.RUNNING);
@@ -143,7 +143,7 @@ public class GlobalControls {
         int stoppedCount = 0;
 
         for (var cell : hexGrid.getCells()) {
-            Agent agent = cell.getAgent();
+            AIAgent agent = cell.getAgent();
             if (agent != null &&
                 (agent.getStatus() == AgentStatus.RUNNING ||
                  agent.getStatus() == AgentStatus.PAUSED ||
@@ -169,7 +169,7 @@ public class GlobalControls {
     public int getRunningCount(HexGrid hexGrid) {
         int count = 0;
         for (var cell : hexGrid.getCells()) {
-            Agent agent = cell.getAgent();
+            AIAgent agent = cell.getAgent();
             if (agent != null && agent.getStatus() == AgentStatus.RUNNING) {
                 count++;
             }
@@ -183,7 +183,7 @@ public class GlobalControls {
     public int getPausedCount(HexGrid hexGrid) {
         int count = 0;
         for (var cell : hexGrid.getCells()) {
-            Agent agent = cell.getAgent();
+            AIAgent agent = cell.getAgent();
             if (agent != null && agent.getStatus() == AgentStatus.PAUSED) {
                 count++;
             }
@@ -197,7 +197,7 @@ public class GlobalControls {
     public int getErrorCount(HexGrid hexGrid) {
         int count = 0;
         for (var cell : hexGrid.getCells()) {
-            Agent agent = cell.getAgent();
+            AIAgent agent = cell.getAgent();
             if (agent != null && agent.getStatus() == AgentStatus.ERROR) {
                 count++;
             }
@@ -211,7 +211,7 @@ public class GlobalControls {
     public int getBlockedCount(HexGrid hexGrid) {
         int count = 0;
         for (var cell : hexGrid.getCells()) {
-            Agent agent = cell.getAgent();
+            AIAgent agent = cell.getAgent();
             if (agent != null && agent.getStatus() == AgentStatus.BLOCKED) {
                 count++;
             }
